@@ -1,5 +1,7 @@
 import os
+import sys
 import shutil
+import getopt
 
 cwd = os.getcwd()
 vivado_project_ext = 'xpr'
@@ -26,15 +28,32 @@ def get_name(s):
 
 
 if __name__ == '__main__':
+    run_type = "before_commit"
+    opts, args = getopt.getopt(sys.argv[1:], 'h', ["bc", "before_commit", "ap", "after_pull"])
+    for opt, arg in opts:
+        if opt == '-h':
+            print('git_helper.py -bc --before_commit -ap --after_pull')
+            sys.exit()
+        elif opt in ("-bc", "--before_commit"):
+            run_type = "before_commit"
+        elif opt in ("-ap", "--after_pull"):
+            run_type = "after_pull"
+
     name = str()
     for file in os.listdir(vivado_dir):
         if get_ext(file) == vivado_project_ext:
             name = get_name(file)
             break
     print('Vivado Project Name: %s' % name)
-    src_dir = os.path.join(vivado_dir, name + vivado_new_src_path)
+
+    if run_type == "after_pull":
+        src_dir = verilog_dir
+        dst_dir = os.path.join(vivado_dir, name + vivado_new_src_path)
+    else:
+        src_dir = os.path.join(vivado_dir, name + vivado_new_src_path)
+        dst_dir = verilog_dir
     for file in os.listdir(src_dir):
         src = os.path.join(src_dir, file)
-        dst = os.path.join(verilog_dir, file)
+        dst = os.path.join(dst_dir, file)
         shutil.copy(src, dst)
         print('Copy %s' % file)
