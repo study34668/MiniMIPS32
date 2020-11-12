@@ -39,6 +39,12 @@ if __name__ == '__main__':
         elif opt in ("-ap", "--after_pull"):
             run_type = "after_pull"
 
+    if run_type == "after_pull":
+        print("Are you sure to move files to vivado dir? (you can not undo this) (y/n)")
+        sure = input()
+        if sure != 'y':
+            exit(0)
+
     name = str()
     for file in os.listdir(vivado_dir):
         if get_ext(file) == vivado_project_ext:
