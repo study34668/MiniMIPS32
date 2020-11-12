@@ -32,18 +32,18 @@ if __name__ == '__main__':
     opts, args = getopt.getopt(sys.argv[1:], 'h', ["bc", "before_commit", "ap", "after_pull"])
     for opt, arg in opts:
         if opt == '-h':
-            print('git_helper.py -bc --before_commit -ap --after_pull')
+            print('python git_helper.py [--bc --before_commit | --ap --after_pull]')
             sys.exit()
-        elif opt in ("-bc", "--before_commit"):
+        elif opt in ("--bc", "--before_commit"):
             run_type = "before_commit"
-        elif opt in ("-ap", "--after_pull"):
+        elif opt in ("--ap", "--after_pull"):
             run_type = "after_pull"
 
     if run_type == "after_pull":
         print("Are you sure to move files to vivado dir? (you can not undo this) (y/n)")
         sure = input()
         if sure != 'y':
-            exit(0)
+            sys.exit()
 
     name = str()
     for file in os.listdir(vivado_dir):
@@ -55,9 +55,11 @@ if __name__ == '__main__':
     if run_type == "after_pull":
         src_dir = verilog_dir
         dst_dir = os.path.join(vivado_dir, name + vivado_new_src_path)
+        print("Copy files from verilog to vivado")
     else:
         src_dir = os.path.join(vivado_dir, name + vivado_new_src_path)
         dst_dir = verilog_dir
+        print("Copy files from vivado to verilog")
     for file in os.listdir(src_dir):
         src = os.path.join(src_dir, file)
         dst = os.path.join(dst_dir, file)
