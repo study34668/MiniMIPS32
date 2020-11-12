@@ -19,6 +19,9 @@ module wb_stage(
     output wire [`REG_BUS       ] wb_dhi_o,
     output wire [`REG_BUS       ] wb_dlo_o,
     
+    output wire                   wb2exe_whilo,
+    output wire [`DOUBLE_REG_BUS] wb2exe_hilo,
+    
     input  wire [`DATA_BUS      ] dm
     );
     
@@ -27,6 +30,9 @@ module wb_stage(
     wire [`DATA_BUS] dmem;
     wire [`DATA_BUS] dmemw;
     reg  [`BYTE_BUS] dmemb;
+    
+    assign wb2exe_whilo = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : wb_whilo_i;
+    assign wb2exe_hilo  = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : wb_dhilo_i;
     
     assign inst_word = wb_dre_i[0]&wb_dre_i[1]&wb_dre_i[2]&wb_dre_i[3];
     

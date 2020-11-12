@@ -20,7 +20,8 @@
 `define CHIP_ENABLE     1'b1                // 芯片使能  
 `define CHIP_DISABLE    1'b0                // 芯片禁止  
 `define WORD_BUS        31: 0               // 32位宽
-`define DOUBLE_REG_BUS  63: 0               // 两倍的通用寄存器的数据线宽度
+`define HI_ADDR         63: 32              // hi
+`define LO_ADDR         31: 0               // lo
 `define RT_ENABLE       1'b1                // rt选择使能
 `define SIGNED_EXT      1'b1                // 符号扩展使能
 `define IMM_ENABLE      1'b1                // 立即数选择使能
@@ -45,6 +46,7 @@
 `define LOGIC           3'b010
 `define MOVE            3'b011
 `define SHIFT           3'b100
+`define JUMP            3'b101
 
 // 内部操作码aluop
 `define MINIMIPS32_LUI             8'h05
@@ -59,6 +61,11 @@
 `define MINIMIPS32_ORI             8'h1D
 `define MINIMIPS32_SLT             8'h26
 `define MINIMIPS32_SLTIU           8'h27
+`define MINIMIPS32_J               8'h2C
+`define MINIMIPS32_JR              8'h2D
+`define MINIMIPS32_JAL             8'h2E
+`define MINIMIPS32_BEQ             8'h30
+`define MINIMIPS32_BNE             8'h31
 `define MINIMIPS32_LB              8'h90
 `define MINIMIPS32_LW              8'h92
 `define MINIMIPS32_SB              8'h98
@@ -66,6 +73,15 @@
 
 /*------------------- 通用寄存器堆参数 -------------------*/
 `define REG_BUS         31: 0               // 寄存器数据宽度
+`define DOUBLE_REG_BUS  63: 0               // 两倍的通用寄存器的数据线宽度
 `define REG_ADDR_BUS    4 : 0               // 寄存器的地址宽度
 `define REG_NUM         32                  // 寄存器数量32个
 `define REG_NOP         5'b00000            // 零号寄存器
+
+/*------------------- Branch Target Buffer -------------------*/
+`define BTB_BUS         56: 0
+`define BTB_VALID_BUS   56
+`define BTB_TAG_BUS     55: 34
+`define BTB_BTA_BUS     33: 2
+`define BTB_BHT_BUS     1: 0
+`define BTB_NUM         64

@@ -4,7 +4,12 @@ module if_stage (
     input 	wire 					cpu_clk_50M,
     input 	wire 					cpu_rst_n,
     
-    output  reg                     ice,
+    input   wire [ 1: 0         ]  jtsel,
+    input   wire [`REG_BUS      ]  addr1,
+    input   wire [`REG_BUS      ]  addr2,
+    input   wire [`REG_BUS      ]  addr3,
+    
+    output  reg                    ice,
     output 	reg  [`INST_ADDR_BUS] 	pc,
     output 	wire [`INST_ADDR_BUS]	iaddr
     );
@@ -23,7 +28,13 @@ module if_stage (
         if (ice == `CHIP_DISABLE)
             pc <= `PC_INIT;                   // 指令存储器禁用的时候，PC保持初始值（MiniMIPS32中设置为0x00000000）
         else begin
-            pc <= pc_next;                    // 指令存储器使能后，PC值每时钟周期加4 	
+            case (jtsel)
+                2'b00: pc <= pc_next;
+                2'b01: pc <= addr3;
+                2'b10: pc <= addr1;
+                2'b11: pc <= addr2;
+                default: pc <= pc_next; // 指令存储器使能后，PC值每时钟周期加4 
+            endcase	
         end
     end
     
