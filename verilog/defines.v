@@ -54,6 +54,7 @@
 `define MINIMIPS32_MFLO            8'h0D
 `define MINIMIPS32_SLL             8'h11
 `define MINIMIPS32_MULT            8'h14
+`define MINIMIPS32_DIV             8'h16
 `define MINIMIPS32_ADD             8'h18
 `define MINIMIPS32_ADDIU           8'h19
 `define MINIMIPS32_SUBU            8'h1B
@@ -85,3 +86,16 @@
 `define BTB_BTA_BUS     33: 2
 `define BTB_BHT_BUS     1: 0
 `define BTB_NUM         64
+
+`define STALL_BUS       3:0
+`define STOP            1'b1
+`define NOSTOP          1'b0
+
+`define DIV_FREE        2'b00
+`define DIV_BY_ZERO     2'b01
+`define DIV_ON          2'b10
+`define DIV_END         2'b11
+`define DIV_READY       1'b1
+`define DIV_NOT_READY   1'b0
+`define DIV_START       1'b1
+`define DIV_STOP        1'b0

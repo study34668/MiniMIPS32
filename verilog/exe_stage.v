@@ -35,7 +35,10 @@ module exe_stage (
     
     output wire                    exe2id_wreg,
     output wire [`REG_ADDR_BUS ]   exe2id_wa,
-    output wire [`REG_BUS      ]   exe2id_wd
+    output wire [`REG_BUS      ]   exe2id_wd,
+    output wire                    exe2id_mreg,
+    
+    output wire                    stallreq_exe
     );
 
     // 直接传到下一阶段
@@ -45,12 +48,135 @@ module exe_stage (
     assign exe_din_o   = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD : exe_din_i;
     assign exe2id_wreg = (cpu_rst_n == `RST_ENABLE) ? `WRITE_DISABLE : exe_wreg_i;
     assign exe2id_wa   = (cpu_rst_n == `RST_ENABLE) ? 5'b0 : exe_wa_i;
+    assign exe2id_mreg = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : exe_mreg_i;
     
     wire [`REG_BUS       ]      logicres;       // 保存逻辑运算的结果
     wire [`REG_BUS       ]      arithres;
     wire [`REG_BUS       ]      movres;
     wire [`REG_BUS       ]      shiftres;
+    reg  [`DOUBLE_REG_BUS]      divres;
     
+    wire                        signed_div_i;
+    wire [`REG_BUS       ]      div_opdata1;
+    wire [`REG_BUS       ]      div_opdata2;
+    wire                        div_start;
+    reg                         div_ready;
+    
+    assign stallreq_exe = (cpu_rst_n == `RST_ENABLE) ? `NOSTOP :
+                          ((exe_aluop_i == `MINIMIPS32_DIV) && (div_ready == `DIV_NOT_READY)) ? `STOP : `NOSTOP;
+                          
+    assign div_opdata1 = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
+                         (exe_aluop_i == `MINIMIPS32_DIV) ? exe_src1_i : `ZERO_WORD;
+                         
+    assign div_opdata2 = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
+                         (exe_aluop_i == `MINIMIPS32_DIV) ? exe_src2_i : `ZERO_WORD;
+                         
+    assign div_start = (cpu_rst_n == `RST_ENABLE) ? `DIV_STOP :
+                       ((exe_aluop_i == `MINIMIPS32_DIV) && (div_ready == `DIV_NOT_READY)) ? `DIV_START : `DIV_STOP;
+    
+    assign signed_div_i = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
+                          (exe_aluop_i == `MINIMIPS32_DIV) ? 1'b1 : 1'b0;
+                          
+    wire [34:0]     div_temp;
+    wire [34:0]     div_temp1;
+    wire [34:0]     div_temp2;
+    wire [34:0]     div_temp3;
+    wire [33:0]     divisor1;
+    wire [33:0]     divisor2;
+    wire [33:0]     divisor3;
+    wire [ 1:0]     mul_cnt;
+    
+    reg  [31:0]     temp_op1;
+    reg  [31:0]     temp_op2;
+    reg  [ 5:0]     cnt;
+    reg  [65:0]     dividend;
+    reg  [ 1:0]     state;
+    
+    assign divisor1 = temp_op2;
+    assign divisor2 = temp_op2 * 2;
+    assign divisor3 = temp_op2 * 3;
+    
+    assign div_temp1 = {1'b000, dividend[63:32]} - {1'b0, divisor1};
+    assign div_temp2 = {1'b000, dividend[63:32]} - {1'b0, divisor2};
+    assign div_temp3 = {1'b000, dividend[63:32]} - {1'b0, divisor3};
+    
+    assign div_temp = (div_temp3[34] == 1'b0) ? div_temp3 :
+                      (div_temp2[34] == 1'b0) ? div_temp2 : div_temp1;
+                      
+    assign mul_cnt = (div_temp3[34] == 1'b0) ? 2'b11 :
+                     (div_temp2[34] == 1'b0) ? 2'b10 : 2'b01;
+                     
+    always @ (posedge cpu_clk_50M) begin
+        if (cpu_rst_n == `RST_ENABLE) begin
+            state       <= `DIV_FREE;
+            div_ready   <= `DIV_NOT_READY;
+            divres      <= {`ZERO_WORD, `ZERO_WORD};
+        end else begin
+            case (state)
+                `DIV_FREE: begin
+                    if (div_start == `DIV_START) begin
+                        if (div_opdata2 == `ZERO_WORD) begin
+                            state <= `DIV_BY_ZERO;
+                        end else begin
+                            state <= `DIV_ON;
+                            cnt <= 6'b000000;
+                            if (div_opdata1[31] == 1'b1) begin
+                                temp_op1 = ~div_opdata1 + 1;
+                            end else begin
+                                temp_op1 = div_opdata1;
+                            end
+                            if (div_opdata2[31] == 1'b1) begin
+                                temp_op2 = ~div_opdata2 + 1;
+                            end else begin
+                                temp_op2 = div_opdata2;
+                            end
+                            dividend <= {2'b00, `ZERO_WORD, temp_op1};
+                            
+                        end
+                    end else begin
+                        div_ready <= `DIV_NOT_READY;
+                        divres <= {`ZERO_WORD, `ZERO_WORD};
+                    end
+                end
+                
+                `DIV_BY_ZERO: begin
+                    dividend <= {`ZERO_WORD, `ZERO_WORD};
+                    state <= `DIV_END;
+                end
+                
+                `DIV_ON: begin
+                    if (cnt != 6'b100010) begin
+                        if (div_temp[34] == 1'b1) begin
+                            dividend <= {dividend[63:0], 2'b00};
+                        end else begin
+                            dividend <= {div_temp[31:0], dividend[31:0], mul_cnt};
+                        end
+                        cnt <= cnt + 2;
+                    end else begin
+                        if ((div_opdata1[31] ^ div_opdata2[31]) == 1'b1) begin
+                            dividend[31:0] <= (~dividend[31:0] + 1);
+                        end
+                        if ((div_opdata1[31] ^ dividend[65]) == 1'b1) begin
+                            dividend[65:34] <= (~dividend[65:34] + 1);
+                        end
+                        state <= `DIV_END;
+                        cnt <= 6'b000000;
+                    end
+                end
+                
+                `DIV_END: begin
+                    divres <= {dividend[65:34], dividend[31:0]};
+                    div_ready <= `DIV_READY;
+                    if (div_start == `DIV_STOP) begin
+                        state     <= `DIV_FREE;
+                        div_ready <= `DIV_NOT_READY;
+                        divres    <= {`ZERO_WORD, `ZERO_WORD};
+                    end
+                end
+            endcase
+        end
+    end
+     
     // 根据内部操作码aluop进行逻辑运算
     assign logicres = (exe_aluop_i == `MINIMIPS32_AND) ? exe_src1_i & exe_src2_i :
                       (exe_aluop_i == `MINIMIPS32_ORI) ? exe_src1_i | exe_src2_i :
@@ -87,6 +213,7 @@ module exe_stage (
     assign exe2id_wd = exe_wd_o;
                       
     assign exe_mul_o = (cpu_rst_n   == `RST_ENABLE ) ? `ZERO_DWORD :
-                       (exe_aluop_i == `MINIMIPS32_MULT) ? (exe_src1_i * exe_src2_i) : `ZERO_DWORD;
+                       (exe_aluop_i == `MINIMIPS32_MULT) ? (exe_src1_i * exe_src2_i) :
+                       (exe_aluop_i == `MINIMIPS32_DIV ) ? divres : `ZERO_DWORD;
 
 endmodule

@@ -14,6 +14,8 @@ module exemem_reg (
     input  wire [`DATA_BUS      ]  exe_din,
     input  wire [`DOUBLE_REG_BUS]  exe_mul,
     
+    input  wire [`STALL_BUS     ]  stall,
+    
     // 送到访存阶段的信息 
     output reg  [`ALUOP_BUS     ]  mem_aluop,
     output reg  [`REG_ADDR_BUS  ]  mem_wa,
@@ -26,7 +28,7 @@ module exemem_reg (
     );
 
     always @(posedge cpu_clk_50M) begin
-    if (cpu_rst_n == `RST_ENABLE) begin
+    if ((cpu_rst_n == `RST_ENABLE) || (stall[3] == `STOP)) begin
         mem_aluop              <= `MINIMIPS32_SLL;
         mem_wa 				   <= `REG_NOP;
         mem_wreg   			   <= `WRITE_DISABLE;
@@ -36,7 +38,7 @@ module exemem_reg (
         mem_din   			   <= `ZERO_WORD;
         mem_mul    			   <= `ZERO_DWORD;
     end
-    else begin
+    else if (stall[3] == `NOSTOP) begin
         mem_aluop              <= exe_aluop;
         mem_wa 				   <= exe_wa;
         mem_wreg 			   <= exe_wreg;

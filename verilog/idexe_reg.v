@@ -16,6 +16,8 @@ module idexe_reg (
     input  wire                   id_mreg,
     input  wire [`REG_BUS      ]  id_retaddr,
     
+    input  wire [`STALL_BUS    ]  stall,
+    
     // 送至执行阶段的信息
     output reg  [`ALUTYPE_BUS  ]  exe_alutype,
     output reg  [`ALUOP_BUS    ]  exe_aluop,
@@ -31,7 +33,7 @@ module idexe_reg (
 
     always @(posedge cpu_clk_50M) begin
         // 复位的时候将送至执行阶段的信息清0
-        if (cpu_rst_n == `RST_ENABLE) begin
+        if ((cpu_rst_n == `RST_ENABLE) || (stall[2] == `STOP && stall[3] == `NOSTOP)) begin
             exe_alutype 	   <= `NOP;
             exe_aluop 		   <= `MINIMIPS32_SLL;
             exe_src1 		   <= `ZERO_WORD;
@@ -44,7 +46,7 @@ module idexe_reg (
             exe_retaddr		   <= `ZERO_WORD;
         end
         // 将来自译码阶段的信息寄存并送至执行阶段
-        else begin
+        else if (stall[2] == `NOSTOP) begin
             exe_alutype 	   <= id_alutype;
             exe_aluop 		   <= id_aluop;
             exe_src1 		   <= id_src1;

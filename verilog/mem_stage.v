@@ -27,6 +27,8 @@ module mem_stage (
     output wire                         mem2exe_whilo,
     output wire [`DOUBLE_REG_BUS]       mem2exe_hilo,
     
+    output wire                         mem2id_mreg,
+    
     output wire [`DATA_ADDR_BUS ]       daddr,
     output wire                         dce,
     output wire [`DATA_WE_BUS   ]       we,
@@ -46,6 +48,7 @@ module mem_stage (
     assign mem2id_wd     = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_wd_i;
     assign mem2exe_whilo = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_whilo_i;
     assign mem2exe_hilo  = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_mul_i;
+    assign mem2id_mreg   = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_mreg_i;
     
     assign dce          = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : ((mem_aluop_i == `MINIMIPS32_LB) | (mem_aluop_i == `MINIMIPS32_LW) | (mem_aluop_i == `MINIMIPS32_SB) | (mem_aluop_i == `MINIMIPS32_SW));
     assign daddr        = (dce) ? mem_wd_i  : `ZERO_WORD;
