@@ -116,7 +116,7 @@ module MiniMIPS32(
     if_stage if_stage0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n),
         .pc(pc), .ice(ice), .iaddr(iaddr),
         .jtsel(jtsel), .addr1(addr1), .addr2(addr2), .addr3(addr3),
-        .stall(stall)
+        .stall(stall), .flush(`NOFLUSH)
     );
     
     ifid_reg ifid_reg0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n),

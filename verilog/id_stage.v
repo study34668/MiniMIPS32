@@ -48,11 +48,22 @@ module id_stage(
     output wire [`REG_BUS      ]    addr2,
     output wire [`REG_BUS      ]    addr3,
     
-    output wire                     stallreq_id
+    output wire                     stallreq_id,
+    
+    input  wire                     id_in_delay_i,
+    input  wire                     flush_im,
+    output wire [`REG_ADDR_BUS ]    cp0_addr,
+    output wire [`INST_ADDR_BUS]    id_pc_o,
+    output wire                     id_in_delay_o,
+    output wire                     next_delay_o,
+    output wire [`EXC_CODE_BUS ]    id_exccode_o
     );
     
+    assign id_pc_o       = (cpu_rst_n == `RST_ENABLE) ? `PC_INIT : id_pc_i;
+    assign id_in_delay_o = (cpu_rst_n == `RST_ENABLE) ? `FALSE_V : id_in_delay_i;
+    
     // 根据小端模式组织指令字
-    wire [`INST_BUS] id_inst = {id_inst_i[7:0], id_inst_i[15:8], id_inst_i[23:16], id_inst_i[31:24]};
+    wire [`INST_BUS] id_inst = (flush_im == `FLUSH) ? `ZERO_WORD : {id_inst_i[7:0], id_inst_i[15:8], id_inst_i[23:16], id_inst_i[31:24]};
 
     // 提取指令字中各个字段的信息
     wire [5 :0] op   = id_inst[31:26];
@@ -65,29 +76,33 @@ module id_stage(
     wire [25:0] instr_index = id_inst[25:0];
 
     /*-------------------- 第一级译码逻辑：确定当前需要译码的指令 --------------------*/
-    wire inst_reg   = ~|op;
-    wire inst_add   = inst_reg& func[5]&~func[4]&~func[3]&~func[2]&~func[1]&~func[0];
-    wire inst_subu  = inst_reg& func[5]&~func[4]&~func[3]&~func[2]& func[1]& func[0];
-    wire inst_and   = inst_reg& func[5]&~func[4]&~func[3]& func[2]&~func[1]&~func[0];
-    wire inst_slt   = inst_reg& func[5]&~func[4]& func[3]&~func[2]& func[1]&~func[0];
-    wire inst_mult  = inst_reg&~func[5]& func[4]& func[3]&~func[2]&~func[1]&~func[0];
-    wire inst_mfhi  = inst_reg&~func[5]& func[4]&~func[3]&~func[2]&~func[1]&~func[0];
-    wire inst_mflo  = inst_reg&~func[5]& func[4]&~func[3]&~func[2]& func[1]&~func[0];
-    wire inst_sll   = inst_reg&~func[5]&~func[4]&~func[3]&~func[2]&~func[1]&~func[0];
-    wire inst_jr    = inst_reg&~func[5]&~func[4]& func[3]&~func[2]&~func[1]&~func[0];
-    wire inst_div   = inst_reg&~func[5]& func[4]& func[3]&~func[2]& func[1]&~func[0];
-    wire inst_addiu = ~op[5]&~op[4]& op[3]&~op[2]&~op[1]& op[0];
-    wire inst_ori   = ~op[5]&~op[4]& op[3]& op[2]&~op[1]& op[0];
-    wire inst_sltiu = ~op[5]&~op[4]& op[3]&~op[2]& op[1]& op[0];
-    wire inst_lui   = ~op[5]&~op[4]& op[3]& op[2]& op[1]& op[0];
-    wire inst_lb    =  op[5]&~op[4]&~op[3]&~op[2]&~op[1]&~op[0];
-    wire inst_lw    =  op[5]&~op[4]&~op[3]&~op[2]& op[1]& op[0];
-    wire inst_sb    =  op[5]&~op[4]& op[3]&~op[2]&~op[1]&~op[0];
-    wire inst_sw    =  op[5]&~op[4]& op[3]&~op[2]& op[1]& op[0];
-    wire inst_j     = ~op[5]&~op[4]&~op[3]&~op[2]& op[1]&~op[0];
-    wire inst_jal   = ~op[5]&~op[4]&~op[3]&~op[2]& op[1]& op[0];
-    wire inst_beq   = ~op[5]&~op[4]&~op[3]& op[2]&~op[1]&~op[0];
-    wire inst_bne   = ~op[5]&~op[4]&~op[3]& op[2]&~op[1]& op[0];
+    wire inst_reg     = ~|op;
+    wire inst_add     = inst_reg& func[5]&~func[4]&~func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_subu    = inst_reg& func[5]&~func[4]&~func[3]&~func[2]& func[1]& func[0];
+    wire inst_and     = inst_reg& func[5]&~func[4]&~func[3]& func[2]&~func[1]&~func[0];
+    wire inst_slt     = inst_reg& func[5]&~func[4]& func[3]&~func[2]& func[1]&~func[0];
+    wire inst_mult    = inst_reg&~func[5]& func[4]& func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_mfhi    = inst_reg&~func[5]& func[4]&~func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_mflo    = inst_reg&~func[5]& func[4]&~func[3]&~func[2]& func[1]&~func[0];
+    wire inst_sll     = inst_reg&~func[5]&~func[4]&~func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_jr      = inst_reg&~func[5]&~func[4]& func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_div     = inst_reg&~func[5]& func[4]& func[3]&~func[2]& func[1]&~func[0];
+    wire inst_syscall = inst_reg&~func[5]&~func[4]& func[3]& func[2]&~func[1]&~func[0];
+    wire inst_addiu   = ~op[5]&~op[4]& op[3]&~op[2]&~op[1]& op[0];
+    wire inst_ori     = ~op[5]&~op[4]& op[3]& op[2]&~op[1]& op[0];
+    wire inst_sltiu   = ~op[5]&~op[4]& op[3]&~op[2]& op[1]& op[0];
+    wire inst_lui     = ~op[5]&~op[4]& op[3]& op[2]& op[1]& op[0];
+    wire inst_lb      =  op[5]&~op[4]&~op[3]&~op[2]&~op[1]&~op[0];
+    wire inst_lw      =  op[5]&~op[4]&~op[3]&~op[2]& op[1]& op[0];
+    wire inst_sb      =  op[5]&~op[4]& op[3]&~op[2]&~op[1]&~op[0];
+    wire inst_sw      =  op[5]&~op[4]& op[3]&~op[2]& op[1]& op[0];
+    wire inst_j       = ~op[5]&~op[4]&~op[3]&~op[2]& op[1]&~op[0];
+    wire inst_jal     = ~op[5]&~op[4]&~op[3]&~op[2]& op[1]& op[0];
+    wire inst_beq     = ~op[5]&~op[4]&~op[3]& op[2]&~op[1]&~op[0];
+    wire inst_bne     = ~op[5]&~op[4]&~op[3]& op[2]&~op[1]& op[0];
+    wire inst_eret    = ~op[5]& op[4]&~op[3]&~op[2]&~op[1]&~op[0]&~func[5]& func[4]& func[3]&~func[2]&~func[1]&~func[0];
+    wire inst_mfc0    = ~op[5]& op[4]&~op[3]&~op[2]&~op[1]&~op[0]&~id_inst[23];
+    wire inst_mtc0    = ~op[5]& op[4]&~op[3]&~op[2]&~op[1]&~op[0]& id_inst[23];
     /*------------------------------------------------------------------------------*/
 
     /*-------------------- 第二级译码逻辑：生成具体控制信号 --------------------*/
@@ -103,7 +118,7 @@ module id_stage(
     wire inst_jump      = (inst_j | inst_jal | inst_jr);
     wire inst_b         = (inst_beq | inst_bne);
     
-    wire rtsel  = (inst_alu_imm | inst_lmem | inst_smem);
+    wire rtsel  = (inst_alu_imm | inst_lmem | inst_smem | inst_mfc0);
     wire immsel = (inst_alu_imm | inst_lmem | inst_smem);
     wire sext   = (inst_imm_sign | inst_lmem | inst_smem);
     wire upper  = (inst_lui);
@@ -120,30 +135,30 @@ module id_stage(
     wire equ;
     
     // 操作类型alutype
-    assign id_alutype_o[2] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_shift | inst_jump | inst_b);
-    assign id_alutype_o[1] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_logic | inst_mf);
-    assign id_alutype_o[0] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_arith | inst_mf | inst_jump | inst_b);
+    assign id_alutype_o[2] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_shift | inst_jump | inst_b | inst_syscall | inst_eret | inst_mtc0);
+    assign id_alutype_o[1] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_logic | inst_mf | inst_syscall | inst_eret | inst_mfc0 | inst_mtc0);
+    assign id_alutype_o[0] = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_arith | inst_mf | inst_jump | inst_b | inst_mfc0);
 
     // 内部操作码aluop
-    assign id_aluop_o[7]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (                                                                                                                                            inst_lb | inst_lw | inst_sb | inst_sw);
+    assign id_aluop_o[7]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (                                                                                                                                            inst_lb | inst_lw | inst_sb | inst_sw                                                                | inst_syscall | inst_eret | inst_mfc0 | inst_mtc0);
     assign id_aluop_o[6]   = 1'b0;
     assign id_aluop_o[5]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (                                  inst_slt                                                                        | inst_sltiu                                                    | inst_j | inst_jal | inst_jr | inst_beq | inst_bne);
     assign id_aluop_o[4]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_add | inst_subu | inst_and |            inst_mult |                         inst_sll | inst_addiu | inst_ori                         | inst_lb | inst_lw | inst_sb | inst_sw                               | inst_beq | inst_bne | inst_div);
-    assign id_aluop_o[3]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_add | inst_subu | inst_and |                        inst_mfhi | inst_mflo |            inst_addiu | inst_ori                                             | inst_sb | inst_sw | inst_j | inst_jal | inst_jr);
-    assign id_aluop_o[2]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (                       inst_and | inst_slt | inst_mult | inst_mfhi | inst_mflo |                         inst_ori | inst_sltiu | inst_lui                                         | inst_j | inst_jal | inst_jr                       | inst_div);
-    assign id_aluop_o[1]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (           inst_subu |            inst_slt |                                                                        inst_sltiu                      | inst_lw           | inst_sw          | inst_jal                                 | inst_div);
-    assign id_aluop_o[0]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (           inst_subu |                                               inst_mflo | inst_sll | inst_addiu | inst_ori | inst_sltiu | inst_lui                                                             | inst_jr            | inst_bne);
+    assign id_aluop_o[3]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_add | inst_subu | inst_and |                        inst_mfhi | inst_mflo |            inst_addiu | inst_ori                                             | inst_sb | inst_sw | inst_j | inst_jal | inst_jr                                                             | inst_mfc0 | inst_mtc0);
+    assign id_aluop_o[2]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (                       inst_and | inst_slt | inst_mult | inst_mfhi | inst_mflo |                         inst_ori | inst_sltiu | inst_lui                                         | inst_j | inst_jal | inst_jr                       | inst_div | inst_syscall | inst_eret | inst_mfc0 | inst_mtc0);
+    assign id_aluop_o[1]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (           inst_subu |            inst_slt |                                                                        inst_sltiu                      | inst_lw           | inst_sw          | inst_jal                                 | inst_div | inst_syscall | inst_eret);
+    assign id_aluop_o[0]   = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (           inst_subu |                                               inst_mflo | inst_sll | inst_addiu | inst_ori | inst_sltiu | inst_lui                                                             | inst_jr            | inst_bne                           | inst_eret             | inst_mtc0);
 
     // 是否用内存得到的数据写寄存器
     assign id_mreg_o       = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : inst_lmem;
     // 写HILO寄存器使能信号
     assign id_whilo_o      = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_mult | inst_div);
     // 写通用寄存器使能信号
-    assign id_wreg_o       = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_alu_imm | inst_mf | inst_shift | inst_lmem | inst_jr);
+    assign id_wreg_o       = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_alu_imm | inst_mf | inst_shift | inst_lmem | inst_jr | inst_mfc0);
     // 读通用寄存器堆端口1使能信号
     assign rreg1 = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_alu_imm | inst_mult | inst_div | inst_lmem | inst_smem | inst_jr | inst_b) & ~inst_lui;
     // 读通用寄存器堆读端口2使能信号
-    assign rreg2 = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_mult | inst_div | inst_shift | inst_smem | inst_b);
+    assign rreg2 = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_mult | inst_div | inst_shift | inst_smem | inst_b | inst_mtc0);
     //数据前推控制信号
     assign fwrd1[0] = (exe2id_wreg == `WRITE_ENABLE) & (exe2id_wa == rs);
     assign fwrd1[1] = (mem2id_wreg == `WRITE_ENABLE) & (mem2id_wa == rs);
@@ -175,7 +190,11 @@ module id_stage(
                        (fwrd2[1] == 1'b1) ? mem2id_wd : rd2;
     
     assign id_din_o = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
-                      (inst_smem) ? rd2 : `ZERO_WORD;
+                      (inst_smem) ? 
+                      ((rreg2 == `READ_DISABLE) ? `ZERO_WORD :
+                      (fwrd2[0] == 1'b1) ? exe2id_wd :
+                      (fwrd2[1] == 1'b1) ? mem2id_wd : rd2) : `ZERO_WORD;
+                      
                       
     assign id_retaddr_o = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD : (id_pc_i + 8);
                       
@@ -191,6 +210,14 @@ module id_stage(
                          (((exe2id_wreg == `WRITE_ENABLE && exe2id_wa == ra1 && rreg1 == `READ_ENABLE) ||
                          (exe2id_wreg == `WRITE_ENABLE && exe2id_wa == ra2 && rreg2 == `READ_ENABLE)) && (exe2id_mreg == `TRUE_V)) ? `STOP :
                          (((mem2id_wreg == `WRITE_ENABLE && mem2id_wa == ra1 && rreg1 == `READ_ENABLE) ||
-                         (mem2id_wreg == `WRITE_ENABLE && mem2id_wa == ra2 && rreg2 == `READ_ENABLE)) && (mem2id_mreg == `TRUE_V)) ? `STOP : `NOSTOP; 
+                         (mem2id_wreg == `WRITE_ENABLE && mem2id_wa == ra2 && rreg2 == `READ_ENABLE)) && (mem2id_mreg == `TRUE_V)) ? `STOP : `NOSTOP;
+                         
+    assign next_delay_o = (cpu_rst_n == `RST_ENABLE) ? `FALSE_V : (inst_jump | inst_b);
+    
+    assign id_exccode_o = (cpu_rst_n == `RST_ENABLE) ? `EXC_NONE :
+                          (inst_syscall == `TRUE_V ) ? `EXC_SYS :
+                          (inst_eret == `TRUE_V ) ? `EXC_ERET : `EXC_NONE;
+                          
+    assign cp0_addr = (cpu_rst_n == `RST_ENABLE) ? `REG_NOP : rd;
 
 endmodule

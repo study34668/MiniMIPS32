@@ -47,6 +47,7 @@
 `define MOVE            3'b011
 `define SHIFT           3'b100
 `define JUMP            3'b101
+`define PRIVILEGE       3'b110
 
 // 内部操作码aluop
 `define MINIMIPS32_LUI             8'h05
@@ -67,6 +68,10 @@
 `define MINIMIPS32_JAL             8'h2E
 `define MINIMIPS32_BEQ             8'h30
 `define MINIMIPS32_BNE             8'h31
+`define MINIMIPS32_SYSCALL         8'h86
+`define MINIMIPS32_ERET            8'h87
+`define MINIMIPS32_MFC0            8'h8C
+`define MINIMIPS32_MTC0            8'h8D
 `define MINIMIPS32_LB              8'h90
 `define MINIMIPS32_LW              8'h92
 `define MINIMIPS32_SB              8'h98
@@ -80,17 +85,19 @@
 `define REG_NOP         5'b00000            // 零号寄存器
 
 /*------------------- Branch Target Buffer -------------------*/
-`define BTB_BUS         56: 0
-`define BTB_VALID_BUS   56
-`define BTB_TAG_BUS     55: 34
-`define BTB_BTA_BUS     33: 2
-`define BTB_BHT_BUS     1: 0
-`define BTB_NUM         64
+//`define BTB_BUS         56: 0
+//`define BTB_VALID_BUS   56
+//`define BTB_TAG_BUS     55: 34
+//`define BTB_BTA_BUS     33: 2
+//`define BTB_BHT_BUS     1: 0
+//`define BTB_NUM         64
 
+/*------------------- 流水线暂停 -------------------*/
 `define STALL_BUS       3:0
 `define STOP            1'b1
 `define NOSTOP          1'b0
 
+/*------------------- 除法指令 -------------------*/
 `define DIV_FREE        2'b00
 `define DIV_BY_ZERO     2'b01
 `define DIV_ON          2'b10
@@ -99,3 +106,24 @@
 `define DIV_NOT_READY   1'b0
 `define DIV_START       1'b1
 `define DIV_STOP        1'b0
+
+/*------------------- 异常处理参数 -------------------*/
+//CP0协处理器参数
+`define CP0_INT_BUS      7:0
+`define CP0_BADVADDR     8
+`define CP0_STATUS       12
+`define CP0_CAUSE        13
+`define CP0_EPC          14
+
+//异常处理参数
+`define EXC_CODE_BUS     4:0
+`define EXC_INT          5'b00
+`define EXC_SYS          5'h08
+`define EXC_OV           5'h0c
+`define EXC_NONE         5'h10
+`define EXC_ERET         5'h11
+`define EXC_ADDR         32'h100
+`define EXC_INT_ADDR     32'h040
+
+`define NOFLUSH          1'b0
+`define FLUSH            1'b1

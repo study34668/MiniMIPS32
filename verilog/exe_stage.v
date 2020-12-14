@@ -38,7 +38,31 @@ module exe_stage (
     output wire [`REG_BUS      ]   exe2id_wd,
     output wire                    exe2id_mreg,
     
-    output wire                    stallreq_exe
+    output wire                    stallreq_exe,
+    
+    input  wire [`REG_ADDR_BUS ]   cp0_addr_i,
+    input  wire [`REG_BUS      ]   cp0_data_i,
+    
+    input  wire                    mem2exe_cp0_we,
+    input  wire [`REG_ADDR_BUS ]   mem2exe_cp0_wa,
+    input  wire [`REG_BUS      ]   mem2exe_cp0_wd,
+    input  wire                    wb2exe_cp0_we,
+    input  wire [`REG_ADDR_BUS ]   wb2exe_cp0_wa,
+    input  wire [`REG_BUS      ]   wb2exe_cp0_wd,
+    
+    input  wire [`INST_ADDR_BUS]   exe_pc_i,
+    input  wire                    exe_in_delay_i,
+    input  wire [`EXC_CODE_BUS ]   exe_exccode_i,
+    
+    output wire                    cp0_re_o,
+    output wire [`REG_ADDR_BUS ]   cp0_raddr_o,
+    output wire                    cp0_we_o,
+    output wire [`REG_ADDR_BUS ]   cp0_waddr_o,
+    output wire [`REG_BUS      ]   cp0_wdata_o,
+    
+    output wire [`INST_ADDR_BUS]   exe_pc_o,
+    output wire                    exe_in_delay_o,
+    output wire [`EXC_CODE_BUS ]   exe_exccode_o
     );
 
     // 直接传到下一阶段
