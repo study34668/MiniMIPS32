@@ -74,6 +74,10 @@ module exe_stage (
     assign exe2id_wa   = (cpu_rst_n == `RST_ENABLE) ? 5'b0 : exe_wa_i;
     assign exe2id_mreg = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : exe_mreg_i;
     
+    //直接输出的信号
+    assign exe_pc_o =(cpu_rst_n ==  `RST_ENABLE)? `PC_INIT : exe_pc_i;
+    assign exe_in_delay_o =(cpu_rst_n ==  `RST_ENABLE)? 1'b0 : exe_in_delay_i;
+    
     wire [`REG_BUS       ]      logicres;       // 保存逻辑运算的结果
     wire [`REG_BUS       ]      arithres;
     wire [`REG_BUS       ]      movres;
@@ -85,6 +89,11 @@ module exe_stage (
     wire [`REG_BUS       ]      div_opdata2;
     wire                        div_start;
     reg                         div_ready;
+    
+    wire [`REG_BUS       ]      hi_t;
+    wire [`REG_BUS       ]      lo_t;
+    //保存CP0中寄存器的最新值
+    wire[`REG_BUS        ]      cp0_t;
     
     assign stallreq_exe = (cpu_rst_n == `RST_ENABLE) ? `NOSTOP :
                           ((exe_aluop_i == `MINIMIPS32_DIV) && (div_ready == `DIV_NOT_READY)) ? `STOP : `NOSTOP;
@@ -100,7 +109,28 @@ module exe_stage (
     
     assign signed_div_i = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
                           (exe_aluop_i == `MINIMIPS32_DIV) ? 1'b1 : 1'b0;
-                          
+                         
+    //根据内部操作码alu_op_i，确定CP0寄存器的读/写访存信号
+    assign cp0_we_o = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
+                      (exe_aluop_i == `MINIMIPS32_MTC0) ? 1'b1: 1'b0;
+    
+    assign cp0_wdata_o = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
+                         (exe_aluop_i == `MINIMIPS32_MTC0) ? exe_src2_i :`ZERO_WORD;
+    
+    assign cp0_waddr_o = (cpu_rst_n == `RST_ENABLE) ? `REG_NOP : cp0_addr_i;
+    
+    assign cp0_raddr_o = (cpu_rst_n == `RST_ENABLE) ? `REG_NOP :cp0_addr_i;
+    
+    assign cp0_re_o = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
+                      (exe_aluop_i == `MINIMIPS32_MTC0) ? 1'b1: 1'b0;
+    
+    //判断是否存在针对CP0中寄存器的数据相关，并获得CP0中寄存器的最新值
+    assign cp0_t = (cp0_re_o  != `READ_ENABLE) ? `ZERO_WORD :
+                   (mem2exe_cp0_we == `WRITE_ENABLE && mem2exe_cp0_wa == cp0_raddr_o) ? mem2exe_cp0_wd :
+                   (wb2exe_cp0_we == `WRITE_ENABLE && wb2exe_cp0_wa == cp0_raddr_o) ? wb2exe_cp0_wd : cp0_data_i;       
+
+
+
     wire [34:0]     div_temp;
     wire [34:0]     div_temp1;
     wire [34:0]     div_temp2;
@@ -200,12 +230,14 @@ module exe_stage (
             endcase
         end
     end
-     
+
     // 根据内部操作码aluop进行逻辑运算
     assign logicres = (exe_aluop_i == `MINIMIPS32_AND) ? exe_src1_i & exe_src2_i :
                       (exe_aluop_i == `MINIMIPS32_ORI) ? exe_src1_i | exe_src2_i :
-                      (exe_aluop_i == `MINIMIPS32_LUI) ? exe_src2_i : `ZERO_WORD;
-                      
+                      (exe_aluop_i == `MINIMIPS32_XOR ) ? (exe_src1_i ^ exe_src2_i) :  
+                      (exe_aluop_i == `MINIMIPS32_NOR ) ? (~(exe_src1_i | exe_src2_i)) : 
+                      (exe_aluop_i == `MINIMIPS32_LUI) ? exe_src2_i : `ZERO_WORD ;
+    // 根据内部操作码aluop进行算术运算                  
     assign arithres = (exe_aluop_i == `MINIMIPS32_ADD)   ? exe_src1_i + exe_src2_i :
                       (exe_aluop_i == `MINIMIPS32_SUBU)  ? exe_src1_i + (~exe_src2_i) + 1 :
                       (exe_aluop_i == `MINIMIPS32_SLT)   ? ($signed(exe_src1_i) < $signed(exe_src2_i)) ? `ONE_WORD : `ZERO_WORD :
@@ -213,15 +245,25 @@ module exe_stage (
                       (exe_aluop_i == `MINIMIPS32_SLTIU) ? (exe_src1_i < exe_src2_i) ? `ONE_WORD : `ZERO_WORD :
                       (exe_aluop_i == `MINIMIPS32_LB)    ? exe_src1_i + exe_src2_i :
                       (exe_aluop_i == `MINIMIPS32_LW)    ? exe_src1_i + exe_src2_i :
+                      (exe_aluop_i == `MINIMIPS32_LH)    ? exe_src1_i + exe_src2_i :
+                      (exe_aluop_i == `MINIMIPS32_LBU)   ? exe_src1_i + exe_src2_i :
+                      (exe_aluop_i == `MINIMIPS32_LHU)   ? exe_src1_i + exe_src2_i :
                       (exe_aluop_i == `MINIMIPS32_SB)    ? exe_src1_i + exe_src2_i :
+                      (exe_aluop_i == `MINIMIPS32_SW)    ? exe_src1_i + exe_src2_i :
+                      (exe_aluop_i == `MINIMIPS32_SUB)   ? exe_src1_i + exe_src2_i[31:0] :
                       (exe_aluop_i == `MINIMIPS32_SW)    ? exe_src1_i + exe_src2_i : `ZERO_WORD;
-                      
-    assign movres = (exe_aluop_i == `MINIMIPS32_MFHI) ? ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`HI_ADDR] :
-                                                        (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`HI_ADDR] : exe_hi_i) :
-                    (exe_aluop_i == `MINIMIPS32_MFLO) ? ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`LO_ADDR] :
-                                                        (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`LO_ADDR] : exe_lo_i) : `ZERO_WORD;
     
-    assign shiftres = (exe_aluop_i == `MINIMIPS32_SLL) ? exe_src2_i << exe_src1_i : `ZERO_WORD;
+    assign hi_t     = ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`HI_ADDR] :
+                      (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`HI_ADDR] : exe_hi_i) ;
+    assign lo_t     = ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`LO_ADDR] :
+                      (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`LO_ADDR] : exe_lo_i) ;          
+    
+    assign movres = (exe_aluop_i == `MINIMIPS32_MFHI) ? hi_t :
+                    (exe_aluop_i == `MINIMIPS32_MFLO) ? lo_t : `ZERO_WORD;
+    // 根据内部操作码aluop进行移位运算
+    assign shiftres = (exe_aluop_i == `MINIMIPS32_SLL) ? (exe_src2_i << exe_src1_i):
+                      (exe_aluop_i == `MINIMIPS32_SRL) ? (exe_src2_i >> exe_src1_i) :
+                      (exe_aluop_i == `MINIMIPS32_SRA) ? (({32{exe_src2_i[31]}} << (6'd32-{1'b0, exe_src1_i[4:0]})) | exe_src2_i >> exe_src1_i[4:0]) : `ZERO_WORD;
 
     assign exe_wa_o   = (cpu_rst_n   == `RST_ENABLE ) ? 5'b0 	 : exe_wa_i;
     assign exe_wreg_o = (cpu_rst_n   == `RST_ENABLE ) ? 1'b0 	 : exe_wreg_i;
@@ -237,7 +279,11 @@ module exe_stage (
     assign exe2id_wd = exe_wd_o;
                       
     assign exe_mul_o = (cpu_rst_n   == `RST_ENABLE ) ? `ZERO_DWORD :
-                       (exe_aluop_i == `MINIMIPS32_MULT) ? (exe_src1_i * exe_src2_i) :
-                       (exe_aluop_i == `MINIMIPS32_DIV ) ? divres : `ZERO_DWORD;
+                       (exe_aluop_i == `MINIMIPS32_MULT) ? ($signed(exe_src1_i) * $signed(exe_src2_i)) :
+                       (exe_aluop_i == `MINIMIPS32_MULTU) ? ($unsigned({1'b0,exe_src1_i}) * $unsigned({1'b0,exe_src2_i})) :
+                       (exe_aluop_i == `MINIMIPS32_DIV ) ? divres : 
+                       (exe_aluop_i == `MINIMIPS32_DIVU ) ? divres : 
+                       (exe_aluop_i == `MINIMIPS32_MTHI ) ? {exe_src1_i, lo_t} : 
+                       (exe_aluop_i == `MINIMIPS32_MTLO ) ? {hi_t, exe_src1_i} : `ZERO_WORD;
 
 endmodule
