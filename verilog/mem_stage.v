@@ -12,6 +12,7 @@ module mem_stage (
     input  wire [`REG_BUS       ]       mem_wd_i,
     input  wire [`DATA_BUS      ]       mem_din_i,
     input  wire [`DOUBLE_REG_BUS]       mem_hilo_i,
+<<<<<<< HEAD
     
     input  wire                         cp0_we_i,
     input  wire [`REG_ADDR_BUS  ]       cp0_waddr_i,
@@ -26,6 +27,8 @@ module mem_stage (
 
     input  wire [`WORD_BUS      ]       cp0_status,
     input  wire [`WORD_BUS      ]       cp0_cause,
+=======
+>>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     
     // 送至写回阶段的信息
     output wire [`ALUOP_BUS     ]       mem_aluop_o,
@@ -78,6 +81,7 @@ module mem_stage (
     assign mem2exe_hilo  = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_hilo_i;
     assign mem2id_mreg   = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_mreg_i;
     
+<<<<<<< HEAD
     // 直接送至写回阶段的信号
     assign cp0_we_o      = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : cp0_we_i;
     assign cp0_waddr_o   = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD  : cp0_waddr_i;
@@ -98,6 +102,8 @@ module mem_stage (
                           mem_exccode_i;
     assign cp0_pc       = (cpu_rst_n == `RST_ENABLE) ?`PC_INIT : mem_pc_i;
     
+=======
+>>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     assign dce          = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : 
                           ((mem_aluop_i == `MINIMIPS32_LB) | (mem_aluop_i == `MINIMIPS32_LW) | (mem_aluop_i == `MINIMIPS32_SB) | (mem_aluop_i == `MINIMIPS32_SW) |
                           (mem_aluop_i == `MINIMIPS32_LH) | (mem_aluop_i == `MINIMIPS32_SH) | (mem_aluop_i == `MINIMIPS32_LBU) | (mem_aluop_i == `MINIMIPS32_LHU));

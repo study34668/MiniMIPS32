@@ -264,6 +264,7 @@ module exe_stage (
                       (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`HI_ADDR] : exe_hi_i) ;
     assign lo_t     = ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`LO_ADDR] :
                       (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`LO_ADDR] : exe_lo_i) ;          
+<<<<<<< HEAD
     
     assign moveres   = (exe_aluop_i == `MINIMIPS32_MFHI) ? hi_t :
                        (exe_aluop_i == `MINIMIPS32_MFLO) ? lo_t :
@@ -278,6 +279,12 @@ module exe_stage (
      assign exe_exccode_o = (cpu_rst_n == `RST_ENABLE  ) ? `EXC_NONE : 
                             ((exe_aluop_i == `MINIMIPS32_ADD) && (ov == `TRUE_V))  ? `EXC_OV : exe_exccode_i;
       
+=======
+    
+    assign movres   = (exe_aluop_i == `MINIMIPS32_MFHI) ? hi_t :
+                      (exe_aluop_i == `MINIMIPS32_MFLO) ? lo_t : `ZERO_WORD;
+    
+>>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     // 根据内部操作码aluop进行移位运算
     assign shiftres = (exe_aluop_i == `MINIMIPS32_SLL ) ? (exe_src2_i << exe_src1_i):
                       (exe_aluop_i == `MINIMIPS32_SLLV) ? (exe_src2_i << exe_src1_i):

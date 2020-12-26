@@ -37,7 +37,11 @@ module memwb_reg (
 
     always @(posedge cpu_clk_50M) begin
 		// 复位的时候将送至写回阶段的信息清0
+<<<<<<< HEAD
 		if (cpu_rst_n == `RST_ENABLE || flush) begin
+=======
+		if (cpu_rst_n == `RST_ENABLE) begin
+>>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
 		    wb_aluop    <= `NOP;
 			wb_wa       <= `REG_NOP;
 			wb_wreg     <= `WRITE_DISABLE;
