@@ -5,6 +5,7 @@ module memwb_reg (
 	input  wire                     cpu_rst_n,
 
 	// 来自访存阶段的信息
+	input  wire [`ALUOP_BUS     ]   mem_aluop,
 	input  wire [`REG_ADDR_BUS  ]   mem_wa,
 	input  wire                     mem_wreg,
 	input  wire                     mem_whilo,
@@ -14,6 +15,7 @@ module memwb_reg (
 	input wire  [`DATA_WE_BUS   ]   mem_dre,
 
 	// 送至写回阶段的信息 
+	output reg  [`ALUOP_BUS     ]   wb_aluop,
 	output reg  [`REG_ADDR_BUS  ]   wb_wa,
 	output reg                      wb_wreg,
 	output reg                      wb_whilo,
@@ -26,6 +28,7 @@ module memwb_reg (
     always @(posedge cpu_clk_50M) begin
 		// 复位的时候将送至写回阶段的信息清0
 		if (cpu_rst_n == `RST_ENABLE) begin
+		    wb_aluop    <= `NOP;
 			wb_wa       <= `REG_NOP;
 			wb_wreg     <= `WRITE_DISABLE;
 			wb_whilo    <= `WRITE_DISABLE;
@@ -36,6 +39,7 @@ module memwb_reg (
 		end
 		// 将来自访存阶段的信息寄存并送至写回阶段
 		else begin
+		    wb_aluop    <= mem_aluop;
 			wb_wa 	    <= mem_wa;
 			wb_wreg     <= mem_wreg;
 			wb_whilo    <= mem_whilo;

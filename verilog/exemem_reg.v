@@ -12,7 +12,7 @@ module exemem_reg (
     input  wire                    exe_mreg,
     input  wire [`REG_BUS 	     ]  exe_wd,
     input  wire [`DATA_BUS      ]  exe_din,
-    input  wire [`DOUBLE_REG_BUS]  exe_mul,
+    input  wire [`DOUBLE_REG_BUS]  exe_hilo,
     
     input  wire [`STALL_BUS     ]  stall,
     
@@ -24,7 +24,7 @@ module exemem_reg (
     output reg                     mem_mreg,
     output reg  [`REG_BUS 	     ]  mem_wd,
     output reg  [`DATA_BUS      ]  mem_din,
-    output reg  [`DOUBLE_REG_BUS]  mem_mul
+    output reg  [`DOUBLE_REG_BUS]  mem_hilo
     );
 
     always @(posedge cpu_clk_50M) begin
@@ -36,7 +36,7 @@ module exemem_reg (
         mem_mreg 			   <= `WRITE_DISABLE;
         mem_wd   			   <= `ZERO_WORD;
         mem_din   			   <= `ZERO_WORD;
-        mem_mul    			   <= `ZERO_DWORD;
+        mem_hilo    		   <= `ZERO_DWORD;
     end
     else if (stall[3] == `NOSTOP) begin
         mem_aluop              <= exe_aluop;
@@ -46,7 +46,7 @@ module exemem_reg (
         mem_mreg 			   <= exe_mreg;
         mem_wd 		    	   <= exe_wd;
         mem_din		    	   <= exe_din;
-        mem_mul 		       <= exe_mul;
+        mem_hilo 		       <= exe_hilo;
     end
   end
 
