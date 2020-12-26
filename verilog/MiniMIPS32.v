@@ -75,7 +75,7 @@ module MiniMIPS32(
     wire [`REG_ADDR_BUS  ] exe_wa_o;
     wire [`REG_BUS 	      ] exe_wd_o;
     wire [`DATA_BUS      ] exe_din_o;
-    wire [`DOUBLE_REG_BUS] exe_mul_o;
+    wire [`DOUBLE_REG_BUS] exe_hilo_o;
     wire [`ALUOP_BUS     ] mem_aluop_i;
     wire 				   mem_wreg_i;
     wire 				   mem_whilo_i;
@@ -83,11 +83,12 @@ module MiniMIPS32(
     wire [`REG_ADDR_BUS  ] mem_wa_i;
     wire [`REG_BUS 	      ] mem_wd_i;
     wire [`DATA_BUS      ] mem_din_i;
-    wire [`DOUBLE_REG_BUS] mem_mul_i;
+    wire [`DOUBLE_REG_BUS] mem_hilo_i;
 
     wire 				    mem_wreg_o;
     wire 				    mem_whilo_o;
     wire                   mem_mreg_o;
+    wire [`ALUOP_BUS     ] mem_aluop_o;
     wire [`REG_ADDR_BUS  ] mem_wa_o;
     wire [`REG_BUS 	      ] mem_dreg_o;
     wire [`DOUBLE_REG_BUS] mem_dhilo_o;
@@ -95,6 +96,7 @@ module MiniMIPS32(
     wire 				   wb_wreg_i;
     wire 				   wb_whilo_i;
     wire                   wb_mreg_i;
+    wire [`ALUOP_BUS     ] wb_aluop_i;
     wire [`REG_ADDR_BUS  ] wb_wa_i;
     wire [`REG_BUS       ] wb_dreg_i;
     wire [`DOUBLE_REG_BUS] wb_dhilo_i;
@@ -112,6 +114,24 @@ module MiniMIPS32(
     wire                   mem2id_mreg;
     wire                   stallreq_id;
     wire                   stallreq_exe;
+                            
+    wire 				    we;
+    wire 				    re;
+    wire [`REG_ADDR_BUS   ] raddr;
+    wire [`REG_ADDR_BUS   ] waddr;
+    wire [`REG_BUS        ] wdata;
+    wire [`CP0_INT_BUS    ] int_i;
+        
+    wire [`INST_ADDR_BUS  ] pc_i;
+    wire                    in_delay_i;
+    wire [`EXC_CODE_BUS   ] exccode_i;
+         
+    wire                    flush;
+    wire [`INST_ADDR_BUS  ] cp0_excaddr;
+    
+    wire [`REG_BUS        ] data_o;
+    wire [`REG_BUS        ] status_o;
+    wire [`REG_BUS        ] cause_o;
 
     if_stage if_stage0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n),
         .pc(pc), .ice(ice), .iaddr(iaddr),
@@ -168,7 +188,7 @@ module MiniMIPS32(
         .exe_hi_i(exe_hi_i), .exe_lo_i(exe_lo_i),
         .exe_aluop_o(exe_aluop_o),
         .exe_wa_o(exe_wa_o), .exe_wreg_o(exe_wreg_o), .exe_wd_o(exe_wd_o),
-        .exe_whilo_o(exe_whilo_o), .exe_mul_o(exe_mul_o),
+        .exe_whilo_o(exe_whilo_o), .exe_hilo_o(exe_hilo_o),
         .exe_mreg_o(exe_mreg_o), .exe_din_o(exe_din_o),
         .exe2id_wreg(exe2id_wreg), .exe2id_wa(exe2id_wa), .exe2id_wd(exe2id_wd),
         .mem2exe_whilo(mem2exe_whilo), .mem2exe_hilo(mem2exe_hilo),
@@ -185,11 +205,11 @@ module MiniMIPS32(
     exemem_reg exemem_reg0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n),
         .exe_aluop(exe_aluop_o),
         .exe_wa(exe_wa_o), .exe_wreg(exe_wreg_o), .exe_wd(exe_wd_o),
-        .exe_whilo(exe_whilo_o), .exe_mul(exe_mul_o),
+        .exe_whilo(exe_whilo_o), .exe_hilo(exe_hilo_o),
         .exe_mreg(exe_mreg_o), .exe_din(exe_din_o),
         .mem_aluop(mem_aluop_i),
         .mem_wa(mem_wa_i), .mem_wreg(mem_wreg_i), .mem_wd(mem_wd_i),
-        .mem_whilo(mem_whilo_i), .mem_mul(mem_mul_i),
+        .mem_whilo(mem_whilo_i), .mem_hilo(mem_hilo_i),
         .mem_mreg(mem_mreg_i), .mem_din(mem_din_i),
         .stall(stall)
     );
@@ -200,9 +220,9 @@ module MiniMIPS32(
 
     mem_stage mem_stage0(.cpu_rst_n(cpu_rst_n), .mem_aluop_i(mem_aluop_i),
         .mem_wa_i(mem_wa_i), .mem_wreg_i(mem_wreg_i), .mem_wd_i(mem_wd_i),
-        .mem_whilo_i(mem_whilo_i), .mem_mul_i(mem_mul_i),
+        .mem_whilo_i(mem_whilo_i), .mem_hilo_i(mem_hilo_i),
         .mem_mreg_i(mem_mreg_i), .mem_din_i(mem_din_i),
-        .mem_wa_o(mem_wa_o), .mem_wreg_o(mem_wreg_o), .mem_dreg_o(mem_dreg_o),
+        .mem_aluop_o(mem_aluop_o), .mem_wa_o(mem_wa_o), .mem_wreg_o(mem_wreg_o), .mem_dreg_o(mem_dreg_o),
         .mem_whilo_o(mem_whilo_o), .mem_dhilo_o(mem_dhilo_o),
         .mem_mreg_o(mem_mreg_o),
         .daddr(daddr), .dce(dce), .we(we), .din(din), .dre(mem_dre_o),
@@ -212,22 +232,39 @@ module MiniMIPS32(
     );
     	
     memwb_reg memwb_reg0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n),
-        .mem_wa(mem_wa_o), .mem_wreg(mem_wreg_o), .mem_dreg(mem_dreg_o),
+        .mem_aluop(mem_aluop_o), .mem_wa(mem_wa_o), .mem_wreg(mem_wreg_o), .mem_dreg(mem_dreg_o),
         .mem_whilo(mem_whilo_o), .mem_dhilo(mem_dhilo_o),
         .mem_mreg(mem_mreg_o), .mem_dre(mem_dre_o),
-        .wb_wa(wb_wa_i), .wb_wreg(wb_wreg_i), .wb_dreg(wb_dreg_i),
+        .wb_aluop(wb_aluop_i), .wb_wa(wb_wa_i), .wb_wreg(wb_wreg_i), .wb_dreg(wb_dreg_i),
         .wb_whilo(wb_whilo_i), .wb_dhilo(wb_dhilo_i),
         .wb_mreg(wb_mreg_i), .wb_dre(wb_dre_i)
     );
 
     wb_stage wb_stage0(.cpu_rst_n(cpu_rst_n),
-        .wb_wa_i(wb_wa_i), .wb_wreg_i(wb_wreg_i), .wb_dreg_i(wb_dreg_i),
+        .wb_aluop_i(wb_aluop_i), .wb_wa_i(wb_wa_i), .wb_wreg_i(wb_wreg_i), .wb_dreg_i(wb_dreg_i),
         .wb_whilo_i(wb_whilo_i), .wb_dhilo_i(wb_dhilo_i),
         .wb_mreg_i(wb_mreg_i), .wb_dre_i(wb_dre_i),
         .dm(dm),
         .wb_wa_o(wb_wa_o), .wb_wreg_o(wb_wreg_o), .wb_wd_o(wb_wd_o),
         .wb_whilo_o(wb_whilo_o), .wb_dhi_o(wb_dhi_o), .wb_dlo_o(wb_dlo_o),
         .wb2exe_whilo(wb2exe_whilo), .wb2exe_hilo(wb2exe_hilo)
+    );
+    
+        cp0_reg cp0_reg0(.cpu_clk_50M(cpu_clk_50M), .cpu_rst_n(cpu_rst_n), 
+        .we(we), 
+        .re(re),
+        .raddr(raddr),
+        .waddr(waddr), 
+        .wdata(wdata), 
+        .int_i(int_i), 
+        .pc_i(pc_i),
+        .in_delay_i(in_delay_i),
+        .exccode_i(exccode_i), 
+        .flush(flush), 
+        .cp0_excaddr(cp0_excaddr), 
+        .data_o(data_o), 
+        .status_o(status_o), 
+        .cause_o(cause_o)
     );
 
 endmodule
