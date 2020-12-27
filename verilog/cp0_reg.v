@@ -39,7 +39,7 @@ module cp0_reg(
     //生成清空从指令存储器IM中取出的指令的信号flush_im
     always @(posedge cpu_clk_50M) begin
         if(cpu_rst_n == `RST_ENABLE) begin
-        flush_im <= `NOFLUSH;
+            flush_im <= `NOFLUSH;
         end
         else begin
             flush_im <= flush;

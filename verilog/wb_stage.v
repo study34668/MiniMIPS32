@@ -30,27 +30,21 @@ module wb_stage(
     
     input  wire [`DATA_BUS      ] dm,
     
-<<<<<<< HEAD
     output wire                     cp0_we_o,
     output wire [`REG_ADDR_BUS  ]   cp0_waddr_o,    
     output wire [`REG_BUS       ]   cp0_wdata_o
     );
     
-=======
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     wire [`REG_BUS] dmem;
     
     assign wb2exe_whilo = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : wb_whilo_i;
     assign wb2exe_hilo  = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : wb_dhilo_i;
     
-<<<<<<< HEAD
     // 直接送至CP0协处理器的信号
     assign cp0_we_o     = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : cp0_we_i;
     assign cp0_waddr_o  = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD  : cp0_waddr_i;
     assign cp0_wdata_o  = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD  : cp0_wdata_i;
     
-=======
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     assign dmem         = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
                           (wb_dre_i == 4'b1111) ? {dm[7:0], dm[15:8], dm[23:16], dm[31:24]} :
                           (wb_dre_i == 4'b1100 & wb_aluop_i == `MINIMIPS32_LH ) ? {{16{dm[23]}}, dm[23:16], dm[31:24]} :

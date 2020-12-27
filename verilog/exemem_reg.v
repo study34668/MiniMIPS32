@@ -53,9 +53,7 @@ module exemem_reg (
         mem_mreg 			   <= `WRITE_DISABLE;
         mem_wd   			   <= `ZERO_WORD;
         mem_din   			   <= `ZERO_WORD;
-        mem_hilo    		   <= `ZERO_DWORD;
-<<<<<<< HEAD
-        
+        mem_hilo    		   <= `ZERO_DWORD;       
         mem_cp0_we             <= `FALSE_V;
         mem_cp0_waddr          <= `ZERO_WORD;
         mem_cp0_wdata          <= `ZERO_WORD;
@@ -71,16 +69,13 @@ module exemem_reg (
         mem_mreg             <= `WRITE_DISABLE;
         mem_wd               <= `ZERO_WORD;
         mem_din              <= `ZERO_WORD;
-        mem_hilo             <= `ZERO_DWORD;
-            
+        mem_hilo             <= `ZERO_DWORD;     
         mem_cp0_we           <= `FALSE_V;
         mem_cp0_waddr        <= `ZERO_WORD;
         mem_cp0_wdata        <= `ZERO_WORD;
         mem_pc               <= `PC_INIT;
         mem_in_delay         <= `FALSE_V;
         mem_exccode          <= `EXC_NONE;             
-=======
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     end
     else if (stall[3] == `NOSTOP) begin
         mem_aluop              <= exe_aluop;
@@ -91,16 +86,12 @@ module exemem_reg (
         mem_wd 		    	   <= exe_wd;
         mem_din		    	   <= exe_din;
         mem_hilo 		       <= exe_hilo;
-<<<<<<< HEAD
-        
         mem_cp0_we             <= exe_cp0_we;
         mem_cp0_waddr          <= mem_cp0_waddr;
         mem_cp0_wdata          <= mem_cp0_wdata;
         mem_pc                 <= mem_pc;
         mem_in_delay           <= mem_in_delay;
         mem_exccode            <= mem_exccode;             
-=======
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
     end
   end
 

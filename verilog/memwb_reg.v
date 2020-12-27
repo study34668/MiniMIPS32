@@ -37,35 +37,29 @@ module memwb_reg (
 
     always @(posedge cpu_clk_50M) begin
 		// 复位的时候将送至写回阶段的信息清0
-<<<<<<< HEAD
 		if (cpu_rst_n == `RST_ENABLE || flush) begin
-=======
-		if (cpu_rst_n == `RST_ENABLE) begin
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
-		    wb_aluop    <= `NOP;
-			wb_wa       <= `REG_NOP;
-			wb_wreg     <= `WRITE_DISABLE;
-			wb_whilo    <= `WRITE_DISABLE;
-			wb_mreg     <= `WRITE_DISABLE;
-			wb_dreg     <= `ZERO_WORD;
-			wb_dhilo    <= `ZERO_DWORD;
-			wb_dre      <= 4'b0000;
-			
+		    wb_aluop      <= `NOP;
+			wb_wa         <= `REG_NOP;
+			wb_wreg       <= `WRITE_DISABLE;
+			wb_whilo      <= `WRITE_DISABLE;
+			wb_mreg       <= `WRITE_DISABLE;
+			wb_dreg       <= `ZERO_WORD;
+			wb_dhilo      <= `ZERO_DWORD;
+			wb_dre        <= 4'b0000;			
 			wb_cp0_we     <= `FALSE_V;
             wb_cp0_waddr  <= `ZERO_WORD;
             wb_cp0_wdata  <= `ZERO_WORD;
 		end
 		// 将来自访存阶段的信息寄存并送至写回阶段
 		else begin
-		    wb_aluop    <= mem_aluop;
-			wb_wa 	    <= mem_wa;
-			wb_wreg     <= mem_wreg;
-			wb_whilo    <= mem_whilo;
-			wb_mreg     <= mem_mreg;
-			wb_dreg     <= mem_dreg;
-			wb_dhilo    <= mem_dhilo;
-			wb_dre      <= mem_dre;
-			
+		    wb_aluop      <= mem_aluop;
+			wb_wa 	      <= mem_wa;
+			wb_wreg       <= mem_wreg;
+			wb_whilo      <= mem_whilo;
+			wb_mreg       <= mem_mreg;
+			wb_dreg       <= mem_dreg;
+			wb_dhilo      <= mem_dhilo;
+			wb_dre        <= mem_dre;			
 			wb_cp0_we     <= mem_cp0_we;
             wb_cp0_waddr  <= mem_cp0_waddr;
             wb_cp0_wdata  <= mem_cp0_wdata;

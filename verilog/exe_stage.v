@@ -264,27 +264,20 @@ module exe_stage (
                       (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`HI_ADDR] : exe_hi_i) ;
     assign lo_t     = ((mem2exe_whilo == `WRITE_ENABLE) ? mem2exe_hilo[`LO_ADDR] :
                       (wb2exe_whilo  == `WRITE_ENABLE) ? wb2exe_hilo[`LO_ADDR] : exe_lo_i) ;          
-<<<<<<< HEAD
     
     assign moveres   = (exe_aluop_i == `MINIMIPS32_MFHI) ? hi_t :
                        (exe_aluop_i == `MINIMIPS32_MFLO) ? lo_t :
                        (exe_aluop_i == `MINIMIPS32_MFC0) ? cp0_t : `ZERO_WORD;
     
     // 判断是否存在整数溢出异常
-     wire [31: 0] exe_src2_t = (exe_aluop_i == `MINIMIPS32_SUBU || exe_aluop_i == `MINIMIPS32_SUB) ? (~exe_src2_i) + 1 : exe_src2_i;
-     wire [31: 0] arith_tmp = exe_src1_i + exe_src2_t;
-     wire ov = ((!exe_src1_i[31] && !exe_src2_t[31] && arith_tmp[31]) || (exe_src1_i[31] && exe_src2_t[31] && !arith_tmp[31]));
+    wire [31: 0] exe_src2_t = (exe_aluop_i == `MINIMIPS32_SUBU || exe_aluop_i == `MINIMIPS32_SUB) ? (~exe_src2_i) + 1 : exe_src2_i;
+    wire [31: 0] arith_tmp = exe_src1_i + exe_src2_t;
+    wire ov = ((!exe_src1_i[31] && !exe_src2_t[31] && arith_tmp[31]) || (exe_src1_i[31] && exe_src2_t[31] && !arith_tmp[31]));
      
-     // 根据ADD运算确定是否有溢出异常
-     assign exe_exccode_o = (cpu_rst_n == `RST_ENABLE  ) ? `EXC_NONE : 
-                            ((exe_aluop_i == `MINIMIPS32_ADD) && (ov == `TRUE_V))  ? `EXC_OV : exe_exccode_i;
-      
-=======
-    
-    assign movres   = (exe_aluop_i == `MINIMIPS32_MFHI) ? hi_t :
-                      (exe_aluop_i == `MINIMIPS32_MFLO) ? lo_t : `ZERO_WORD;
-    
->>>>>>> 915ec274df4000f30e25f17aaa36c8e2e8043e39
+    // 根据ADD运算确定是否有溢出异常
+    assign exe_exccode_o = (cpu_rst_n == `RST_ENABLE  ) ? `EXC_NONE : 
+                           ((exe_aluop_i == `MINIMIPS32_ADD | exe_aluop_i == `MINIMIPS32_ADDI | exe_aluop_i == `MINIMIPS32_SUB) && (ov == `TRUE_V))  ? `EXC_OV : exe_exccode_i;
+     
     // 根据内部操作码aluop进行移位运算
     assign shiftres = (exe_aluop_i == `MINIMIPS32_SLL ) ? (exe_src2_i << exe_src1_i):
                       (exe_aluop_i == `MINIMIPS32_SLLV) ? (exe_src2_i << exe_src1_i):
