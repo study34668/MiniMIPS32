@@ -158,14 +158,18 @@
 `define CP0_EPC          14
 
 //异常处理参数
-`define EXC_CODE_BUS     4:0
-`define EXC_INT          5'b00
-`define EXC_SYS          5'h08
-`define EXC_OV           5'h0c
-`define EXC_NONE         5'h10
-`define EXC_ERET         5'h11
-`define EXC_ADDR         32'h100
-`define EXC_INT_ADDR     32'h040
+`define EXC_CODE_BUS        4 : 0           // 异常类型编码宽度
+`define EXC_INT             5'b00           // 中断异常的编码
+`define EXC_ADEL            5'h04           // 加载或取指地址错异常的编码
+`define EXC_ADES            5'h05           // 存储地址错异常的编码
+`define EXC_SYS             5'h08           // 系统调用异常的编码
+`define EXC_BREAK           5'h09           // Break异常的编码
+`define EXC_RI              5'h0a           // 错误指令异常的编码
+`define EXC_OV              5'h0c           // 整数溢出异常的编码
+`define EXC_NONE            5'h10           // 无异常
+`define EXC_ERET            5'h11           // ERET异常的编码
+`define EXC_ADDR            32'h00000100    // 异常处理程序入口地址
+`define EXC_INT_ADDR        32'h00000040    // 中断异常处理程序入口地址
 
 `define NOFLUSH          1'b0
 `define FLUSH            1'b1

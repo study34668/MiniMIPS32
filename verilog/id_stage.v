@@ -187,8 +187,8 @@ module id_stage(
     // 写HILO寄存器使能信号
     assign id_whilo_o      = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_mult | inst_multu | inst_div | inst_divu | inst_mt);
     // 写通用寄存器使能信号
-    assign id_wreg_o       = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : jal ? (inst_jal | ((inst_bltzal | inst_bgezal) & equ)) :
-                             (inst_alu_reg | inst_alu_imm | inst_mf | inst_shift | inst_shiftv | inst_lmem | inst_jr | inst_mfc0 | inst_jalr);
+    assign id_wreg_o       = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : jal ? `WRITE_ENABLE :
+                             (inst_alu_reg | inst_alu_imm | inst_mf | inst_shift | inst_shiftv | inst_lmem | inst_mfc0 | inst_jalr);
     // 读通用寄存器堆端口1使能信号
     assign rreg1 = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : (inst_alu_reg | inst_alu_imm | inst_mult | inst_multu | inst_div | inst_divu | inst_shiftv | inst_mt | inst_lmem | inst_smem | inst_jr | inst_b | inst_jalr) & ~inst_lui;
     // 读通用寄存器堆读端口2使能信号
@@ -254,6 +254,7 @@ module id_stage(
     assign next_delay_o = (cpu_rst_n == `RST_ENABLE) ? `FALSE_V : (inst_jump | inst_b);
     
     assign id_exccode_o = (cpu_rst_n == `RST_ENABLE) ? `EXC_NONE :
+                          (id_aluop_o == 8'h00) ? `EXC_RI :
                           (inst_syscall == `TRUE_V ) ? `EXC_SYS :
                           (inst_eret == `TRUE_V ) ? `EXC_ERET : `EXC_NONE;
                           

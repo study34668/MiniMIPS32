@@ -56,7 +56,8 @@ module mem_stage (
     
     output wire [`INST_ADDR_BUS ]       cp0_pc,
     output wire                         cp0_in_delay,
-    output wire [`EXC_CODE_BUS  ]       cp0_exccode
+    output wire [`EXC_CODE_BUS  ]       cp0_exccode,
+    output wire [`REG_BUS       ]       cp0_badvaddr
     );
     
     wire [`REG_BUS] din_word;
@@ -77,11 +78,6 @@ module mem_stage (
     assign mem2exe_whilo = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_whilo_i;
     assign mem2exe_hilo  = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_hilo_i;
     assign mem2id_mreg   = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_mreg_i;
-    
-    // 直接送至写回阶段的信号
-    assign cp0_we_o      = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : cp0_we_i;
-    assign cp0_waddr_o   = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD  : cp0_waddr_i;
-    assign cp0_wdata_o   = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD  : cp0_wdata_i;
 
     // CP0中status寄存器和cause寄存器的最新值
     wire [`WORD_BUS] status;
@@ -93,12 +89,28 @@ module mem_stage (
 
     // 生成输入到CP0协处理器的信号
     assign cp0_in_delay = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : mem_in_delay_i;
+    
     assign cp0_exccode  = (cpu_rst_n == `RST_ENABLE) ? `EXC_NONE : 
-                          ((status[15:10] & cause[15:10]) != 8'h00 && status[1] == 1'b0 && status[0] == 1'b1) ? `EXC_INT : 
+                          ((status[15:10] & cause[15:10]) != 8'h00 && status[1] == 1'b0 && status[0] == 1'b1) ? `EXC_INT :
+                          (mem_pc_i[1:0] === 2'b01 | mem_pc_i[1:0] === 2'b10 | mem_pc_i[1:0] === 2'b11) ? `EXC_ADEL : 
+                          ((mem_aluop_i == `MINIMIPS32_LH | mem_aluop_i == `MINIMIPS32_LHU) & (mem_wd_i[0] != 1'b0)) ? `EXC_ADEL :
+                          ((mem_aluop_i == `MINIMIPS32_LW) & (mem_wd_i[1:0] != 2'b00)) ? `EXC_ADEL :
+                          ((mem_aluop_i == `MINIMIPS32_SH) & (mem_wd_i[  0] != 1'b0 )) ? `EXC_ADES :
+                          ((mem_aluop_i == `MINIMIPS32_SW) & (mem_wd_i[1:0] != 2'b00)) ? `EXC_ADES :
                           mem_exccode_i;
+    
+    assign cp0_badvaddr = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD :
+                          (mem_pc_i[1:0] === 2'b01 | mem_pc_i[1:0] === 2'b10 | mem_pc_i[1:0] === 2'b11) ? mem_pc_i :
+                          mem_wd_i;
+    
+    assign cp0_we_o     = (cpu_rst_n == `RST_ENABLE) ? 1'b0 : cp0_we_i;
+    assign cp0_waddr_o  = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD : cp0_waddr_i;
+    assign cp0_wdata_o  = (cpu_rst_n == `RST_ENABLE) ? `ZERO_WORD : cp0_wdata_i;
+    
     assign cp0_pc       = (cpu_rst_n == `RST_ENABLE) ?`PC_INIT : mem_pc_i;
     
-    assign dce          = (cpu_rst_n == `RST_ENABLE) ? 1'b0  : 
+    assign dce          = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
+                          (cp0_exccode != `EXC_NONE) ? 1'b0 :
                           ((mem_aluop_i == `MINIMIPS32_LB) | (mem_aluop_i == `MINIMIPS32_LW) | (mem_aluop_i == `MINIMIPS32_SB) | (mem_aluop_i == `MINIMIPS32_SW) |
                           (mem_aluop_i == `MINIMIPS32_LH) | (mem_aluop_i == `MINIMIPS32_SH) | (mem_aluop_i == `MINIMIPS32_LBU) | (mem_aluop_i == `MINIMIPS32_LHU));
     

@@ -153,6 +153,7 @@ module MiniMIPS32(
     wire [`INST_ADDR_BUS  ] pc_i;
     wire                    in_delay_i;
     wire [`EXC_CODE_BUS   ] exccode_i;
+    wire [`REG_BUS        ] badvaddr_i;
          
     wire                    flush;
     wire                    flush_im;
@@ -288,7 +289,7 @@ module MiniMIPS32(
         .cp0_we_o(mem_cp0_we_o), .cp0_waddr_o(mem_cp0_waddr_o),
         .cp0_wdata_o(mem_cp0_wdata_o),
         .cp0_status(status_o), .cp0_cause(cause_o),
-        .cp0_pc(pc_i), .cp0_in_delay(in_delay_i), .cp0_exccode(exccode_i),
+        .cp0_pc(pc_i), .cp0_in_delay(in_delay_i), .cp0_exccode(exccode_i), .cp0_badvaddr(badvaddr_i),
         .wb2mem_cp0_we(cp0_we), .wb2mem_cp0_wa(waddr), .wb2mem_cp0_wd(wdata)
     );
     	
@@ -330,6 +331,7 @@ module MiniMIPS32(
         .pc_i(pc_i),
         .in_delay_i(in_delay_i),
         .exccode_i(exccode_i), 
+        .badvaddr_i(badvaddr_i),
         .flush(flush),
         .flush_im(flush_im),
         .cp0_excaddr(cp0_excaddr), 

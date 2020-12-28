@@ -14,6 +14,7 @@ module cp0_reg(
 	input  wire [`INST_ADDR_BUS] pc_i,
 	input  wire                  in_delay_i,
 	input  wire [`EXC_CODE_BUS ] exccode_i,
+	input  wire [`REG_BUS      ] badvaddr_i,
 	 
 	output wire 				 flush,
 	output reg                   flush_im,
@@ -95,6 +96,14 @@ module cp0_reg(
                             `CP0_EPC:      epc      <= wdata;
 						endcase
 					end
+			    `EXC_ADEL: begin
+			        badvaddr <= badvaddr_i;
+                    do_exc();
+                end
+			    `EXC_ADES: begin
+			        badvaddr <= badvaddr_i;
+			        do_exc();
+			    end
 				`EXC_ERET:       // ERET指令
 					do_eret();
 				default:        // 异常发生时，处理对应异常

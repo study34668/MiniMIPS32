@@ -122,7 +122,7 @@ module exe_stage (
     assign cp0_raddr_o = (cpu_rst_n == `RST_ENABLE) ? `REG_NOP :cp0_addr_i;
     
     assign cp0_re_o = (cpu_rst_n == `RST_ENABLE) ? 1'b0 :
-                      (exe_aluop_i == `MINIMIPS32_MTC0) ? 1'b1: 1'b0;
+                      (exe_aluop_i == `MINIMIPS32_MFC0) ? 1'b1: 1'b0;
     
     //判断是否存在针对CP0中寄存器的数据相关，并获得CP0中寄存器的最新值
     assign cp0_t = (cp0_re_o  != `READ_ENABLE) ? `ZERO_WORD :
@@ -283,8 +283,8 @@ module exe_stage (
                       (exe_aluop_i == `MINIMIPS32_SLLV) ? (exe_src2_i << exe_src1_i):
                       (exe_aluop_i == `MINIMIPS32_SRL ) ? (exe_src2_i >> exe_src1_i) :
                       (exe_aluop_i == `MINIMIPS32_SRLV) ? (exe_src2_i >> exe_src1_i) :
-                      (exe_aluop_i == `MINIMIPS32_SRA ) ? ($signed(exe_src2_i) >>> exe_src1_i) :
-                      (exe_aluop_i == `MINIMIPS32_SRAV) ? ($signed(exe_src2_i) >>> exe_src1_i) : `ZERO_WORD;
+                      (exe_aluop_i == `MINIMIPS32_SRA ) ? $signed($signed(exe_src2_i) >>> exe_src1_i) :
+                      (exe_aluop_i == `MINIMIPS32_SRAV) ? $signed($signed(exe_src2_i) >>> exe_src1_i) : `ZERO_WORD;
 
     assign exe_wa_o   = (cpu_rst_n   == `RST_ENABLE ) ? 5'b0 	 : exe_wa_i;
     assign exe_wreg_o = (cpu_rst_n   == `RST_ENABLE ) ? 1'b0 	 : exe_wreg_i;
@@ -299,8 +299,12 @@ module exe_stage (
                       
     assign exe2id_wd = exe_wd_o;
                       
+    wire [`REG_BUS] exe_src1_mult_t = (exe_aluop_i == `MINIMIPS32_MULT & exe_src1_i[31]) ? (~exe_src1_i) + 1 : exe_src1_i;
+    wire [`REG_BUS] exe_src2_mult_t = (exe_aluop_i == `MINIMIPS32_MULT & exe_src2_i[31]) ? (~exe_src2_i) + 1 : exe_src2_i;
+    wire [`DOUBLE_REG_BUS] mult_t = exe_src1_mult_t * exe_src2_mult_t;
+    
     assign exe_hilo_o = (cpu_rst_n   == `RST_ENABLE ) ? `ZERO_DWORD :
-                        (exe_aluop_i == `MINIMIPS32_MULT ) ? ($signed(exe_src1_i) * $signed(exe_src2_i)) :
+                        (exe_aluop_i == `MINIMIPS32_MULT ) ? ((exe_src1_i[31] ^ exe_src2_i[31]) ? (~mult_t) + 1 : mult_t ):
                         (exe_aluop_i == `MINIMIPS32_MULTU) ? ($unsigned(exe_src1_i) * $unsigned(exe_src2_i)) :
                         (exe_aluop_i == `MINIMIPS32_DIV  ) ? divres : 
                         (exe_aluop_i == `MINIMIPS32_DIVU ) ? divres : 
